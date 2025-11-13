@@ -53,7 +53,7 @@ export default function Header() {
           <Link href="/" className="flex items-center gap-2">
             {/* Increased logo size */}
             <Image
-              src="/images/logo2.png"
+              src="/images/Logo2.png"
               alt="Monievue"
               width={190}
               height={58}

@@ -92,7 +92,7 @@ export default function LoginPage() {
           transition={{ delay: 0.25, type: "spring", stiffness: 120 }}
         >
           <Image
-            src="/images/logo2.png"
+            src="/images/Logo2.png"
             alt="Monievue"
             width={152}
             height={46}
