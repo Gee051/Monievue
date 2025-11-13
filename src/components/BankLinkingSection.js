@@ -28,20 +28,17 @@ export default function BankLinkingSection({
   accounts = [],
   title = 'Secure Account Connection',
   description = 'Link your bank accounts to unlock insights.',
-  onConnected,          // parent can refresh transactions
+  onConnected,
 }) {
   const { exchangePublicToken, revokeConnection, deleteData } = useOpenBanking()
 
-  // Persisted connections map: { [bankId]: { connectionId, bankId, status, expiresAt } }
   const [connections, setConnections] = useState({})
 
-  // hydrate from localStorage once
   useEffect(() => {
     const stored = loadJSON(CONN_KEY, {})
     setConnections(stored)
   }, [])
 
-  // small ticker to refresh countdown text
   const [, setTick] = useState(0)
   useEffect(() => {
     const t = setInterval(()=> setTick(x=>x+1), 30000)
@@ -53,7 +50,6 @@ export default function BankLinkingSection({
     [connections]
   )
 
-  // Consent modal state
   const [pendingBank, setPendingBank] = useState(null)
   const [showConsent, setShowConsent] = useState(false)
   const [showWidget, setShowWidget] = useState(false)
@@ -90,11 +86,10 @@ export default function BankLinkingSection({
       [pendingBank.id]: { connectionId: res.connectionId, bankId: pendingBank.id, status:'active', expiresAt }
     }
     setConnections(next)
-    // persist (useOpenBanking already saved, but keep UI in sync)
     localStorage.setItem(CONN_KEY, JSON.stringify(next))
 
     setSuccessMsg(`${pendingBank.name} connected`)
-    if (typeof onConnected === 'function') await onConnected(pendingBank.id) // refresh transactions in parent
+    if (typeof onConnected === 'function') await onConnected(pendingBank.id)
     setPendingBank(null)
     setTimeout(()=> setSuccessMsg(''), 2200)
   }
@@ -106,7 +101,7 @@ export default function BankLinkingSection({
     const next = { ...connections }; delete next[bankId]
     setConnections(next)
     localStorage.setItem(CONN_KEY, JSON.stringify(next))
-    if (typeof onConnected === 'function') await onConnected() // optional refresh
+    if (typeof onConnected === 'function') await onConnected()
   }
 
   async function handleDelete(bankId) {
@@ -133,17 +128,30 @@ export default function BankLinkingSection({
       {/* Connectable banks */}
       <ul className="space-y-3">
         {availableBanks.map(bank => (
-          <li key={bank.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50">
+          <li
+            key={bank.id}
+            className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50"
+          >
             <div className="flex items-center gap-3">
-              <Image src={bank.logo} alt="" width={80} height={80} className="rounded-md bg-white object-contain" />
-              <span className="font-medium text-slate-800">{bank.name}</span>
+              <Image
+                src={bank.logo}
+                alt=""
+                width={80}
+                height={80}
+                className="rounded-md bg-white object-contain"
+              />
+              <span className="font-medium text-slate-800 text-sm sm:text-base">
+                {bank.name}
+              </span>
             </div>
-            <button
-              onClick={() => handleStartConnect(bank)}
-              className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-[#1e1e2f] transition"
-            >
-              Connect
-            </button>
+            <div className="flex justify-start sm:justify-end">
+              <button
+                onClick={() => handleStartConnect(bank)}
+                className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-[#1e1e2f] transition text-sm w-full sm:w-auto"
+              >
+                Connect
+              </button>
+            </div>
           </li>
         ))}
       </ul>
@@ -151,38 +159,72 @@ export default function BankLinkingSection({
       {/* Connected */}
       {Object.keys(connections).length > 0 && (
         <>
-          <h3 className="mt-6 mb-2 text-sm font-semibold text-slate-700">Connected</h3>
-          <div className="space-y-2">
+          <h3 className="mt-6 mb-2 text-sm font-semibold text-slate-700">
+            Connected
+          </h3>
+          <div className="space-y-3">
             {Object.entries(connections).map(([bankId, meta]) => {
               const bank = BANKS.find(b => b.id === bankId)
               const remaining = fmtRemaining(meta.expiresAt)
               const expired = remaining === 'expired'
+
               return (
-                <div key={bankId} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-slate-200">
+                <div
+                  key={bankId}
+                  className="rounded-lg border border-slate-200 p-3 space-y-3"
+                >
+                  {/* Top: logo + name + status */}
                   <div className="flex items-center gap-3">
-                    <Image src={bank?.logo || '/banks/default.png'} alt="" width={60} height={60} className="rounded bg-white object-contain" />
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="font-medium">{bank?.name || bankId}</span>
-                      <span className={expired ? 'text-red-600' : 'text-green-700'}>• {expired ? 'Expired' : 'Active'}</span>
-                      <span className="text-slate-600">• {remaining}</span>
+                    <Image
+                      src={bank?.logo || '/banks/default.png'}
+                      alt=""
+                      width={60}
+                      height={60}
+                      className="rounded bg-white object-contain"
+                    />
+                    <div>
+                      <p className="font-medium text-slate-800 text-sm sm:text-base">
+                        {bank?.name || bankId}
+                      </p>
+                      <p className="text-xs text-slate-600 mt-1">
+                        <span
+                          className={
+                            expired
+                              ? 'text-red-600 font-medium'
+                              : 'text-green-700 font-medium'
+                          }
+                        >
+                          {expired ? 'Expired' : 'Active'}
+                        </span>
+                        <span className="mx-1">•</span>
+                        <span>{remaining}</span>
+                      </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+
+                  {/* Bottom: buttons (stack on mobile, row on bigger screens) */}
+                  <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
                     <button
-                      onClick={() => { setPendingBank(bank); setConsentWindow('24h'); setConsentGiven(false); setAckChecked(false); setShowConsent(true) }}
-                      className="px-3 py-2 rounded-md border border-slate-300 text-slate-700 hover:bg-slate-100 text-sm"
+                      onClick={() => {
+                        setPendingBank(bank)
+                        setConsentWindow('24h')
+                        setConsentGiven(false)
+                        setAckChecked(false)
+                        setShowConsent(true)
+                      }}
+                      className="w-full sm:w-auto px-3 py-2 rounded-md border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs sm:text-sm"
                     >
                       {expired ? 'Re-consent' : 'Change Access'}
                     </button>
                     <button
                       onClick={() => handleDisconnect(bankId)}
-                      className="px-3 py-2 rounded-md border border-slate-300 text-slate-700 hover:bg-slate-100 text-sm"
+                      className="w-full sm:w-auto px-3 py-2 rounded-md border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs sm:text-sm"
                     >
                       Disconnect
                     </button>
                     <button
                       onClick={() => handleDelete(bankId)}
-                      className="px-3 py-2 rounded-md border border-red-300 text-red-700 hover:bg-red-50 text-sm"
+                      className="w-full sm:w-auto px-3 py-2 rounded-md border border-red-300 text-red-700 hover:bg-red-50 text-xs sm:text-sm"
                     >
                       Delete data
                     </button>
@@ -244,10 +286,17 @@ function ConsentModal({
           <h3 className="text-xl font-semibold text-slate-900">Grant Consent</h3>
         </div>
 
-        <p className="text-slate-600 mb-4">Authorize <b>temporary, read-only</b> access to your <b>balances</b> and <b>transactions</b>.</p>
+        <p className="text-slate-600 mb-4">
+          Authorize <b>temporary, read-only</b> access to your <b>balances</b> and <b>transactions</b>.
+        </p>
 
         <label className="flex items-start gap-2 mb-4">
-          <input type="checkbox" className="mt-1" checked={consentGiven} onChange={(e)=>setConsentGiven(e.target.checked)} />
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={consentGiven}
+            onChange={(e)=>setConsentGiven(e.target.checked)}
+          />
           <span className="text-sm text-slate-700">I consent for the selected period.</span>
         </label>
 
@@ -264,12 +313,24 @@ function ConsentModal({
         </div>
 
         <label className="flex items-start gap-2 mb-4">
-          <input type="checkbox" className="mt-1" checked={ackChecked} onChange={(e)=>setAckChecked(e.target.checked)} />
-          <span className="text-sm text-slate-700">I can revoke access anytime from Settings.</span>
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={ackChecked}
+            onChange={(e)=>setAckChecked(e.target.checked)}
+          />
+          <span className="text-sm text-slate-700">
+            I can revoke access anytime from Settings.
+          </span>
         </label>
 
         <div className="flex justify-end gap-3">
-          <button onClick={onCancel} className="px-4 py-2 rounded-md border border-slate-300 text-slate-700 hover:bg-slate-100">Cancel</button>
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 rounded-md border border-slate-300 text-slate-700 hover:bg-slate-100"
+          >
+            Cancel
+          </button>
           <button
             onClick={onContinue}
             disabled={!canContinue}
@@ -293,14 +354,26 @@ function MonoWidgetMock({ bank, onClose, onSuccess }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative bg-white w-full max-w-md rounded-2xl p-6 shadow-xl">
-        <h3 className="text-xl font-semibold text-slate-900 mb-2">Connect to {bank.name}</h3>
-<p className="text-slate-600 mb-2">
-  In production, this step opens Mono, a secure-open banking widget so you can link your bank
-  without sharing credentials with us.
-</p>
+        <h3 className="text-xl font-semibold text-slate-900 mb-2">
+          Connect to {bank.name}
+        </h3>
+        <p className="text-slate-600 mb-2">
+          In production, this step opens Mono, a secure open-banking widget so you can link your bank
+          without sharing credentials with us.
+        </p>
         <div className="flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 rounded-md border border-slate-300 text-slate-700 hover:bg-slate-100">Cancel</button>
-          <button onClick={simulate} className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-[#1e1e2f]">Continue</button>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-md border border-slate-300 text-slate-700 hover:bg-slate-100"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={simulate}
+            className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-[#1e1e2f]"
+          >
+            Continue
+          </button>
         </div>
       </div>
     </div>
